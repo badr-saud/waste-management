@@ -12,7 +12,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 class SensorData(BaseModel):
     fill_level: float
     weight: float
-    gas_concentration: float
+    gas_concentration: int 
 @app.get("/")
 def read_index():
     return FileResponse("static/index.html")
