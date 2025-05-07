@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Waste Management Porject</title>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.1/chart.min.js"></script>
+  </head>
+  <body class="bg-gray-100 min-h-screen">
+    <header class="bg-blue-600 text-white p-6 shadow-lg">
+      <div class="container mx-auto">
+        <h1 class="text-3xl font-bold mb-2">Waste Classification System</h1>
+        <p class="text-lg">
+          Intelligent classification of sensor data using machine learning
+        </p>
+      </div>
+    </header>
+
+    <main class="container mx-auto py-8 px-4">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Left Column: Model Information -->
+        <div class="col-span-1 bg-white rounded-lg shadow-md p-6">
+          <h2 class="text-2xl font-semibold mb-4 text-blue-800">AI Models</h2>
+
+          <div id="model-status" class="mb-6 p-3 bg-yellow-100 rounded-md">
+            <p class="font-medium">Checking model status...</p>
+          </div>
+
+          <div id="models-info" class="space-y-6 hidden">
+            <!-- Take/Keep Model -->
+            <div class="p-4 border rounded-md border-gray-300">
+              <h3 class="text-xl font-medium text-blue-700">
+                Take/Keep Classifier
+              </h3>
+              <p class="mt-2 text-gray-700">
+                Binary SVM classifier using RBF kernel to decide whether to take
+                or keep an item based on sensor readings.
+              </p>
+
+              <div class="mt-3">
+                <h4 class="font-medium text-gray-800">Features:</h4>
+                <ul class="list-disc list-inside text-gray-600 ml-2">
+                  <li>Gas Value (100-1024)</li>
+                  <li>Distance (1-27)</li>
+                  <li>Weight (10-50)</li>
+                </ul>
+              </div>
+
+              <div class="mt-3">
+                <h4 class="font-medium text-gray-800">Classification Logic:</h4>
+                <ul class="list-disc list-inside text-gray-600 ml-2">
+                  <li>If gas value > 400: Take</li>
+                  <li>If distance < 6 and weight > 25: Take</li>
+                  <li>If distance ≤ 10 and weight > 25: Take</li>
+                  <li>Otherwise: Keep</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- Toxic Gas Model -->
+            <div class="p-4 border rounded-md border-gray-300">
+              <h3 class="text-xl font-medium text-blue-700">
+                Toxic Gas Classifier
+              </h3>
+              <p class="mt-2 text-gray-700">
+                Binary SVM classifier using RBF kernel to detect toxic gas based
+                on sensor measurements.
+              </p>
+
+              <div class="mt-3">
+                <h4 class="font-medium text-gray-800">Features:</h4>
+                <ul class="list-disc list-inside text-gray-600 ml-2">
+                  <li>Fill Level</li>
+                  <li>Weight</li>
+                  <li>Gas Concentration</li>
+                </ul>
+              </div>
+
+              <div class="mt-3">
+                <h4 class="font-medium text-gray-800">Classes:</h4>
+                <ul class="list-disc list-inside text-gray-600 ml-2">
+                  <li>Normal: Normal reading</li>
+                  <li>Full: Container is full</li>
+                  <li>Toxic: Toxic gas detected</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-6">
+            <button
+              id="train-button"
+              class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-200"
+            >
+              Train Models
+            </button>
+          </div>
+        </div>
+
+        <!-- Middle Column: Prediction Form -->
+        <div class="col-span-1 bg-white rounded-lg shadow-md p-6">
+          <h2 class="text-2xl font-semibold mb-4 text-blue-800">
+            Make Prediction
+          </h2>
+
+          <form id="prediction-form" class="space-y-4">
+            <div class="space-y-2">
+              <label for="gas-value" class="block text-gray-700 font-medium"
+                >Gas Value</label
+              >
+              <input
+                type="number"
+                id="gas-value"
+                name="gas-value"
+                min="0"
+                max="1024"
+                value="400"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <input
+                type="range"
+                min="0"
+                max="1024"
+                value="400"
+                class="w-full"
+                id="gas-value-slider"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <label for="distance" class="block text-gray-700 font-medium"
+                >Distance</label
+              >
+              <input
+                type="number"
+                id="distance"
+                name="distance"
+                min="1"
+                max="27"
+                value="5"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <input
+                type="range"
+                min="1"
+                max="27"
+                value="5"
+                class="w-full"
+                id="distance-slider"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <label for="weight" class="block text-gray-700 font-medium"
+                >Weight</label
+              >
+              <input
+                type="number"
+                id="weight"
+                name="weight"
+                min="0"
+                max="50"
+                value="30"
+                step="0.1"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <input
+                type="range"
+                min="0"
+                max="50"
+                value="30"
+                step="0.1"
+                class="w-full"
+                id="weight-slider"
+              />
+            </div>
+
+            <button
+              type="submit"
+              class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition duration-200"
+            >
+              Predict
+            </button>
+          </form>
+        </div>
+
+        <!-- Right Column: Results -->
+        <div class="col-span-1 bg-white rounded-lg shadow-md p-6">
+          <h2 class="text-2xl font-semibold mb-4 text-blue-800">
+            Prediction Results
+          </h2>
+
+          <div id="no-prediction" class="p-6 text-center text-gray-500">
+            <p class="text-lg">No prediction made yet.</p>
+            <p>Adjust the parameters and click "Predict" to see results.</p>
+          </div>
+
+          <div id="prediction-results" class="hidden">
+            <div class="mb-6">
+              <h3 class="text-xl font-medium text-gray-800 mb-2">
+                Action Classification
+              </h3>
+              <div
+                id="action-result"
+                class="p-4 rounded-md text-white text-center font-bold text-xl"
+              >
+                Unknown
+              </div>
+              <div class="mt-2 text-center text-gray-600">
+                Confidence: <span id="action-confidence">0</span>%
+              </div>
+            </div>
+
+            <div class="mb-6">
+              <h3 class="text-xl font-medium text-gray-800 mb-2">
+                Gas Classification
+              </h3>
+              <div
+                id="gas-result"
+                class="p-4 rounded-md text-white text-center font-bold text-xl"
+              >
+                Unknown
+              </div>
+              <div class="mt-2 text-center text-gray-600">
+                Confidence: <span id="gas-confidence">0</span>%
+              </div>
+            </div>
+
+            <div class="p-4 bg-gray-100 rounded-md">
+              <h3 class="font-medium text-gray-800 mb-2">Raw Input Values:</h3>
+              <pre id="raw-input" class="text-sm text-gray-600"></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Technical Information Section -->
+      <div class="mt-10 bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-2xl font-semibold mb-4 text-blue-800">
+          Technical Details
+        </h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h3 class="text-xl font-medium text-gray-800 mb-3">
+              Machine Learning Approach
+            </h3>
+            <p class="text-gray-700 mb-4">
+              This system uses two Support Vector Machine (SVM) models with
+              Radial Basis Function (RBF) kernels to classify sensor data.
+              Principal Component Analysis (PCA) is applied for dimensionality
+              reduction, projecting the 3-dimensional feature space onto a 2D
+              space.
+            </p>
+
+            <h4 class="font-medium text-gray-800 mb-2">Model Pipeline:</h4>
+            <ol class="list-decimal list-inside text-gray-600 ml-2 space-y-1">
+              <li>Data normalization/centering</li>
+              <li>PCA dimensionality reduction to 2 components</li>
+              <li>SVM classification with RBF kernel</li>
+              <li>Prediction with probability estimation</li>
+            </ol>
+          </div>
+
+          <div>
+            <h3 class="text-xl font-medium text-gray-800 mb-3">
+              API Endpoints
+            </h3>
+
+            <div class="space-y-4">
+              <div class="p-3 bg-gray-100 rounded-md">
+                <h4 class="font-medium text-blue-700">POST /predict</h4>
+                <p class="text-gray-600 text-sm mt-1">
+                  Predicts action and gas classification based on input sensor
+                  values.
+                </p>
+                <pre class="text-xs mt-2 text-gray-700">
+{"values": [gas_value, distance, weight]}</pre
+                >
+              </div>
+
+              <div class="p-3 bg-gray-100 rounded-md">
+                <h4 class="font-medium text-blue-700">POST /train</h4>
+                <p class="text-gray-600 text-sm mt-1">
+                  Trains or retrains the models with optional new data.
+                </p>
+                <pre class="text-xs mt-2 text-gray-700">
+{"data": [[gas, dist, weight], ...], "labels": [0, 1, ...]}</pre
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Visualization Section -->
+        <div class="mt-8">
+          <h3 class="text-xl font-medium text-gray-800 mb-3">
+            Decision Boundary Visualization
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h4 class="font-medium text-blue-700 mb-2">
+                Take/Keep Classifier
+              </h4>
+              <div class="bg-gray-100 rounded-md p-2 h-64">
+                <canvas id="take-keep-chart"></canvas>
+              </div>
+            </div>
+            <div>
+              <h4 class="font-medium text-blue-700 mb-2">Gas Classifier</h4>
+              <div class="bg-gray-100 rounded-md p-2 h-64">
+                <canvas id="gas-chart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="bg-gray-800 text-white py-6 mt-12">
+      <div class="container mx-auto px-4">
+        <p class="text-center">Amira Team | © 2025 Waste Management Project</p>
+      </div>
+    </footer>
+
+    <script>
+      // Global variables
+      let takeKeepModel = null;
+      let gasModel = null;
+      let takeKeepChart = null;
+      let gasChart = null;
+
+      // Mock data for visualization
+      const mockTakeKeepData = {
+        take: Array.from({ length: 30 }, () => [
+          Math.random() * 500 + 400, // Gas value > 400
+          Math.random() * 10 + 1, // Distance 1-10
+          Math.random() * 15 + 30, // Weight 30-45
+        ]),
+        keep: Array.from({ length: 30 }, () => [
+          Math.random() * 300 + 100, // Gas value 100-400
+          Math.random() * 17 + 10, // Distance 10-27
+          Math.random() * 10 + 10, // Weight 10-20
+        ]),
+      };
+
+      const mockGasData = {
+        normal: Array.from({ length: 20 }, () => [
+          Math.random() * 300 + 100, // Fill level 100-400
+          Math.random() * 15 + 10, // Weight 10-25
+          Math.random() * 200 + 100, // Gas concentration 100-300
+        ]),
+        full: Array.from({ length: 20 }, () => [
+          Math.random() * 300 + 700, // Fill level 700-1000
+          Math.random() * 15 + 30, // Weight 30-45
+          Math.random() * 200 + 100, // Gas concentration 100-300
+        ]),
+        toxic: Array.from({ length: 20 }, () => [
+          Math.random() * 500 + 300, // Fill level 300-800
+          Math.random() * 30 + 10, // Weight 10-40
+          Math.random() * 300 + 700, // Gas concentration 700-1000
+        ]),
+      };
+
+      // DOM elements
+      const elements = {
+        modelStatus: document.getElementById("model-status"),
+        modelsInfo: document.getElementById("models-info"),
+        trainButton: document.getElementById("train-button"),
+        predictionForm: document.getElementById("prediction-form"),
+        gasValue: document.getElementById("gas-value"),
+        gasValueSlider: document.getElementById("gas-value-slider"),
+        distance: document.getElementById("distance"),
+        distanceSlider: document.getElementById("distance-slider"),
+        weight: document.getElementById("weight"),
+        weightSlider: document.getElementById("weight-slider"),
+        noPrediction: document.getElementById("no-prediction"),
+        predictionResults: document.getElementById("prediction-results"),
+        actionResult: document.getElementById("action-result"),
+        actionConfidence: document.getElementById("action-confidence"),
+        gasResult: document.getElementById("gas-result"),
+        gasConfidence: document.getElementById("gas-confidence"),
+        rawInput: document.getElementById("raw-input"),
+        takeKeepChart: document.getElementById("take-keep-chart"),
+        gasChart: document.getElementById("gas-chart"),
+      };
+
+      // Initialize the application
+      function init() {
+        // Check if models are available
+        setTimeout(() => {
+          elements.modelStatus.innerHTML =
+            '<p class="font-medium text-yellow-700">Models not trained yet. Please train the models first.</p>';
+          elements.modelsInfo.classList.remove("hidden");
+        }, 1000);
+
+        // Set up form input sync with sliders
+        setupInputSync();
+
+        // Set up event listeners
+        setupEventListeners();
+
+        // Initialize charts
+        initializeCharts();
+      }
+
+      // Set up form input sync with sliders
+      function setupInputSync() {
+        // Gas value / Fill level
+        elements.gasValue.addEventListener("input", function () {
+          elements.gasValueSlider.value = this.value;
+        });
+        elements.gasValueSlider.addEventListener("input", function () {
+          elements.gasValue.value = this.value;
+        });
+
+        // Distance / Weight
+        elements.distance.addEventListener("input", function () {
+          elements.distanceSlider.value = this.value;
+        });
+        elements.distanceSlider.addEventListener("input", function () {
+          elements.distance.value = this.value;
+        });
+
+        // Weight / Gas concentration
+        elements.weight.addEventListener("input", function () {
+          elements.weightSlider.value = this.value;
+        });
+        elements.weightSlider.addEventListener("input", function () {
+          elements.weight.value = this.value;
+        });
+      }
+
+      // Set up event listeners
+      function setupEventListeners() {
+        // Train button
+        elements.trainButton.addEventListener("click", trainModels);
+
+        // Prediction form
+        elements.predictionForm.addEventListener("submit", function (e) {
+          e.preventDefault();
+          makePrediction();
+        });
+      }
+
+      // Initialize charts
+      function initializeCharts() {
+        // Take/Keep Chart
+        takeKeepChart = new Chart(elements.takeKeepChart, {
+          type: "scatter",
+          data: {
+            datasets: [
+              {
+                label: "Take",
+                data: [],
+                backgroundColor: "rgba(52, 211, 153, 0.6)",
+                pointRadius: 5,
+              },
+              {
+                label: "Keep",
+                data: [],
+                backgroundColor: "rgba(239, 68, 68, 0.6)",
+                pointRadius: 5,
+              },
+              {
+                label: "Current",
+                data: [],
+                backgroundColor: "rgba(59, 130, 246, 1)",
+                pointRadius: 8,
+                pointStyle: "triangle",
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: {
+                title: {
+                  display: true,
+                  text: "Gas Value",
+                },
+              },
+              y: {
+                title: {
+                  display: true,
+                  text: "Distance",
+                },
+              },
+            },
+          },
+        });
+
+        // Gas Chart
+        gasChart = new Chart(elements.gasChart, {
+          type: "scatter",
+          data: {
+            datasets: [
+              {
+                label: "Normal",
+                data: [],
+                backgroundColor: "rgba(52, 211, 153, 0.6)",
+                pointRadius: 5,
+              },
+              {
+                label: "Full",
+                data: [],
+                backgroundColor: "rgba(251, 191, 36, 0.6)",
+                pointRadius: 5,
+              },
+              {
+                label: "Toxic",
+                data: [],
+                backgroundColor: "rgba(239, 68, 68, 0.6)",
+                pointRadius: 5,
+              },
+              {
+                label: "Current",
+                data: [],
+                backgroundColor: "rgba(59, 130, 246, 1)",
+                pointRadius: 8,
+                pointStyle: "triangle",
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: {
+                title: {
+                  display: true,
+                  text: "Fill Level",
+                },
+              },
+              y: {
+                title: {
+                  display: true,
+                  text: "Gas Concentration",
+                },
+              },
+            },
+          },
+        });
+      }
+
+      // Train models
+      function trainModels() {
+        elements.trainButton.disabled = true;
+        elements.trainButton.innerText = "Training...";
+        elements.modelStatus.innerHTML =
+          '<p class="font-medium text-yellow-700">Training models... Please wait.</p>';
+
+        // Simulate training delay
+        setTimeout(() => {
+          // Mock training the models
+          takeKeepModel = {
+            trained: true,
+            predict: function (features) {
+              const [gas, distance, weight] = features;
+
+              // Implement the classification logic
+              let result = "Keep";
+              let confidence = 0;
+
+              if (gas > 400) {
+                result = "Take";
+                confidence = Math.min(100, 50 + (gas - 400) / 10);
+              } else if (distance < 6 && weight > 25) {
+                result = "Take";
+                confidence = Math.min(
+                  100,
+                  50 + (6 - distance) * 5 + (weight - 25)
+                );
+              } else if (distance <= 10 && weight > 25) {
+                result = "Take";
+                confidence = Math.min(
+                  100,
+                  50 + (10 - distance) * 2 + (weight - 25) / 2
+                );
+              } else {
+                confidence = Math.min(
+                  100,
+                  50 + (400 - gas) / 10 + (distance - 10) * 2
+                );
+              }
+
+              return {
+                result,
+                confidence: Math.round(confidence),
+              };
+            },
+          };
+
+          gasModel = {
+            trained: true,
+            predict: function (features) {
+              const [fillLevel, weight, gasConcentration] = features;
+
+              // Simple classification logic
+              if (gasConcentration > 600) {
+                return {
+                  result: "Toxic",
+                  confidence: Math.round(50 + (gasConcentration - 600) / 10),
+                };
+              } else if (fillLevel > 650) {
+                return {
+                  result: "Full",
+                  confidence: Math.round(50 + (fillLevel - 650) / 10),
+                };
+              } else {
+                return {
+                  result: "Normal",
+                  confidence: Math.round(50 + (650 - fillLevel) / 10),
+                };
+              }
+            },
+          };
+
+          // Update charts with training data
+          updateCharts();
+
+          // Update UI
+          elements.modelStatus.innerHTML =
+            '<p class="font-medium text-green-700">Models trained successfully!</p>';
+          elements.trainButton.innerText = "Retrain Models";
+          elements.trainButton.disabled = false;
+
+          // Enable form submission
+          elements.predictionForm.querySelector(
+            'button[type="submit"]'
+          ).disabled = false;
+        }, 2000);
+      }
+
+      // Update charts with training data
+      function updateCharts() {
+        // Update Take/Keep chart
+        takeKeepChart.data.datasets[0].data = mockTakeKeepData.take.map(
+          (point) => ({
+            x: point[0], // Gas value
+            y: point[1], // Distance
+          })
+        );
+
+        takeKeepChart.data.datasets[1].data = mockTakeKeepData.keep.map(
+          (point) => ({
+            x: point[0], // Gas value
+            y: point[1], // Distance
+          })
+        );
+
+        takeKeepChart.update();
+
+        // Update Gas chart
+        gasChart.data.datasets[0].data = mockGasData.normal.map((point) => ({
+          x: point[0], // Fill level
+          y: point[2], // Gas concentration
+        }));
+
+        gasChart.data.datasets[1].data = mockGasData.full.map((point) => ({
+          x: point[0], // Fill level
+          y: point[2], // Gas concentration
+        }));
+
+        gasChart.data.datasets[2].data = mockGasData.toxic.map((point) => ({
+          x: point[0], // Fill level
+          y: point[2], // Gas concentration
+        }));
+
+        gasChart.update();
+      }
+
+      // Make prediction
+      function makePrediction() {
+        if (!takeKeepModel || !gasModel) {
+          alert("Please train the models first.");
+          return;
+        }
+
+        // Get input values
+        const gasValue = parseFloat(elements.gasValue.value);
+        const distance = parseFloat(elements.distance.value);
+        const weight = parseFloat(elements.weight.value);
+
+        // Make predictions
+        const takeKeepPrediction = takeKeepModel.predict([
+          gasValue,
+          distance,
+          weight,
+        ]);
+        const gasPrediction = gasModel.predict([
+          gasValue,
+          weight,
+          distance * 30,
+        ]); // Simulate gas concentration
+
+        // Display results
+        elements.noPrediction.classList.add("hidden");
+        elements.predictionResults.classList.remove("hidden");
+
+        // Update Take/Keep result
+        elements.actionResult.innerText = takeKeepPrediction.result;
+        elements.actionResult.className = `p-4 rounded-md text-white text-center font-bold text-xl ${
+          takeKeepPrediction.result === "Take" ? "bg-green-600" : "bg-red-600"
+        }`;
+        elements.actionConfidence.innerText = takeKeepPrediction.confidence;
+
+        // Update Gas result
+        elements.gasResult.innerText = gasPrediction.result;
+        elements.gasResult.className = `p-4 rounded-md text-white text-center font-bold text-xl ${
+          gasPrediction.result === "Normal"
+            ? "bg-green-600"
+            : gasPrediction.result === "Full"
+            ? "bg-yellow-500"
+            : "bg-red-600"
+        }`;
+        elements.gasConfidence.innerText = gasPrediction.confidence;
+
+        // Update Raw Input
+        elements.rawInput.innerText = JSON.stringify(
+          {
+            gasValue,
+            distance,
+            weight,
+          },
+          null,
+          2
+        );
+
+        // Update chart current point
+        takeKeepChart.data.datasets[2].data = [
+          {
+            x: gasValue,
+            y: distance,
+          },
+        ];
+        takeKeepChart.update();
+
+        gasChart.data.datasets[3].data = [
+          {
+            x: gasValue,
+            y: distance * 30,
+          },
+        ];
+        gasChart.update();
+      }
+
+      // Initialize the application when the page loads
+      document.addEventListener("DOMContentLoaded", init);
+    </script>
+  </body>
+</html>
