@@ -15,7 +15,7 @@ from typing import List, Optional
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # Import our prediction module
-from prediction import predict_classification
+from prediction import predict_classification, train_and_predict_once
 from train_models import train_take_keep_classifier, train_toxic_gas_classifier
 
 # Initialize FastAPI app
@@ -144,46 +144,21 @@ async def get_model_info():
         ]
     }
 
-@app.post("/train-and-predict")
-async def train_and_predict(data: SensorData):
+@app.post("/auto-predict")
+async def auto_predict(data: SensorData):
     """
-    Train both models and use them immediately to predict based on the provided input.
+    Endpoint that trains models and immediately returns prediction results.
     """
     try:
-        # Validate input
-        if len(data.values) != 3:
-            raise HTTPException(
-                status_code=400,
-                detail="Input must contain exactly 3 values: [gas_value/fill_level, distance/weight, weight/gas_concentration]"
-            )
-        
-        # Train both models
-        take_keep_model = train_take_keep_classifier()
-        toxic_gas_model = train_toxic_gas_classifier()
-
-        # Use the newly trained models directly for prediction
-        input_array = np.array(data.values).reshape(1, -1)
-
-        # --- Predict Take/Keep ---
-        take_keep_input_scaled = take_keep_model['scaler'].transform(input_array)
-        take_keep_input_pca = take_keep_model['pca'].transform(take_keep_input_scaled)
-        take_keep_pred = take_keep_model['model'].predict(take_keep_input_pca)[0]
-        take_keep_label = "take" if take_keep_pred == 1 else "keep"
-
-        # --- Predict Toxic Gas ---
-        toxic_input_centered = input_array - toxic_gas_model['mu']
-        toxic_input_pca = toxic_gas_model['pca'].transform(toxic_input_centered)
-        toxic_pred = toxic_gas_model['model'].predict(toxic_input_pca)[0]
-        toxic_label = "toxic" if toxic_pred == 1 else "normal"
-
+        result = train_and_predict_once(data.values)
         return {
             "message": "Models trained and prediction completed.",
-            "take_keep_prediction": take_keep_label,
-            "toxic_gas_prediction": toxic_label
+            **result
         }
-
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Training or prediction failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Auto prediction failed: {str(e)}")
 
 
 if __name__ == "__main__":
