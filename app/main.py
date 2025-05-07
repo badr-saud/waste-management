@@ -63,32 +63,33 @@ async def get_home(request: Request):
 @app.post("/predict")
 async def predict(data: SensorData):
     """
-    Endpoint to predict action (Take/Keep) and gas type (Normal/Toxic) based on sensor data.
-    If models are not trained, they will be trained automatically.
+    Endpoint to predict action (Take/Keep) and gas type (Normal/Toxic) based on sensor data
+    
+    The expected input is a list of 3 values:
+    - For Take/Keep classification: [gas_value, distance, weight]
+    - For Gas classification: These same values are reinterpreted as [fill_level, weight, gas_concentration]
     """
     try:
         # Validate input
         if len(data.values) != 3:
             raise HTTPException(
-                status_code=400,
+                status_code=400, 
                 detail="Input must contain exactly 3 values: [gas_value/fill_level, distance/weight, weight/gas_concentration]"
             )
-
-        # Check if model files exist
-        take_keep_model_path = Path("take_keep_classifier.pkl")
-        toxic_gas_model_path = Path("toxic_gas_model.pkl")
-
-        if not take_keep_model_path.exists() or not toxic_gas_model_path.exists():
-            # Train models automatically if missing
-            train_take_keep_classifier()
-            train_toxic_gas_classifier()
-
+        
         # Make prediction
         result = predict_classification(data.values)
         return result
-
+        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
+        # Check if model files exist, if not suggest training
+        model_files = Path(".").glob("*.pkl")
+        if not list(model_files):
+            raise HTTPException(
+                status_code=500,
+                detail="Model files not found. Please train models first by making a POST request to /train endpoint."
+            )
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/train", response_model=TrainingResult)
 async def train_models():
@@ -142,6 +143,48 @@ async def get_model_info():
             }
         ]
     }
+
+@app.post("/train-and-predict")
+async def train_and_predict(data: SensorData):
+    """
+    Train both models and use them immediately to predict based on the provided input.
+    """
+    try:
+        # Validate input
+        if len(data.values) != 3:
+            raise HTTPException(
+                status_code=400,
+                detail="Input must contain exactly 3 values: [gas_value/fill_level, distance/weight, weight/gas_concentration]"
+            )
+        
+        # Train both models
+        take_keep_model = train_take_keep_classifier()
+        toxic_gas_model = train_toxic_gas_classifier()
+
+        # Use the newly trained models directly for prediction
+        input_array = np.array(data.values).reshape(1, -1)
+
+        # --- Predict Take/Keep ---
+        take_keep_input_scaled = take_keep_model['scaler'].transform(input_array)
+        take_keep_input_pca = take_keep_model['pca'].transform(take_keep_input_scaled)
+        take_keep_pred = take_keep_model['model'].predict(take_keep_input_pca)[0]
+        take_keep_label = "take" if take_keep_pred == 1 else "keep"
+
+        # --- Predict Toxic Gas ---
+        toxic_input_centered = input_array - toxic_gas_model['mu']
+        toxic_input_pca = toxic_gas_model['pca'].transform(toxic_input_centered)
+        toxic_pred = toxic_gas_model['model'].predict(toxic_input_pca)[0]
+        toxic_label = "toxic" if toxic_pred == 1 else "normal"
+
+        return {
+            "message": "Models trained and prediction completed.",
+            "take_keep_prediction": take_keep_label,
+            "toxic_gas_prediction": toxic_label
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Training or prediction failed: {str(e)}")
+
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
