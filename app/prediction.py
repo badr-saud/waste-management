@@ -78,3 +78,44 @@ def predict_classification(input_raw):
     }
     
     return result
+
+import numpy as np
+from train_models import train_take_keep_classifier, train_toxic_gas_classifier
+
+def train_and_predict_once(input_values):
+    """
+    Train both models and make predictions using provided input.
+
+    Args:
+        input_values (list or array): A list of 3 sensor values:
+            - [gas_value/fill_level, distance/weight, weight/gas_concentration]
+
+    Returns:
+        dict: Prediction results including labels for take/keep and gas type.
+    """
+    if len(input_values) != 3:
+        raise ValueError("Input must contain exactly 3 values: [gas_value/fill_level, distance/weight, weight/gas_concentration]")
+
+    # Convert to array and reshape
+    input_array = np.array(input_values).reshape(1, -1)
+
+    # Train both models
+    take_keep_model = train_take_keep_classifier()
+    toxic_gas_model = train_toxic_gas_classifier()
+
+    # --- Predict Take/Keep ---
+    take_keep_scaled = take_keep_model['scaler'].transform(input_array)
+    take_keep_pca = take_keep_model['pca'].transform(take_keep_scaled)
+    take_keep_pred = take_keep_model['model'].predict(take_keep_pca)[0]
+    take_keep_label = "take" if take_keep_pred == 1 else "keep"
+
+    # --- Predict Toxic Gas ---
+    toxic_centered = input_array - toxic_gas_model['mu']
+    toxic_pca = toxic_gas_model['pca'].transform(toxic_centered)
+    toxic_pred = toxic_gas_model['model'].predict(toxic_pca)[0]
+    toxic_label = "toxic" if toxic_pred == 1 else "normal"
+
+    return {
+        "Action": take_keep_label,
+        "Gas": toxic_label
+    }
