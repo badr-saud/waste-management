@@ -63,33 +63,32 @@ async def get_home(request: Request):
 @app.post("/predict")
 async def predict(data: SensorData):
     """
-    Endpoint to predict action (Take/Keep) and gas type (Normal/Toxic) based on sensor data
-    
-    The expected input is a list of 3 values:
-    - For Take/Keep classification: [gas_value, distance, weight]
-    - For Gas classification: These same values are reinterpreted as [fill_level, weight, gas_concentration]
+    Endpoint to predict action (Take/Keep) and gas type (Normal/Toxic) based on sensor data.
+    If models are not trained, they will be trained automatically.
     """
     try:
         # Validate input
         if len(data.values) != 3:
             raise HTTPException(
-                status_code=400, 
+                status_code=400,
                 detail="Input must contain exactly 3 values: [gas_value/fill_level, distance/weight, weight/gas_concentration]"
             )
-        
+
+        # Check if model files exist
+        take_keep_model_path = Path("take_keep_classifier.pkl")
+        toxic_gas_model_path = Path("toxic_gas_model.pkl")
+
+        if not take_keep_model_path.exists() or not toxic_gas_model_path.exists():
+            # Train models automatically if missing
+            train_take_keep_classifier()
+            train_toxic_gas_classifier()
+
         # Make prediction
         result = predict_classification(data.values)
         return result
-        
+
     except Exception as e:
-        # Check if model files exist, if not suggest training
-        model_files = Path(".").glob("*.pkl")
-        if not list(model_files):
-            raise HTTPException(
-                status_code=500,
-                detail="Model files not found. Please train models first by making a POST request to /train endpoint."
-            )
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
 
 @app.post("/train", response_model=TrainingResult)
 async def train_models():
